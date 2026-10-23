@@ -265,7 +265,7 @@ ACs marked `[process]` are review-checklist items (not CI-automatable).
 
 Roles: **Agency Admin (AA)**, **Agent/Property Manager (PM)**, **Landlord/Owner (LO)**, **Caretaker (CT)**, **Tenant (TN)**, **Contractor (CN)**.
 Scope legend: **W** = workspace, **P** = property-scoped assignments, **O** = own records only, **A** = assigned records only.
-Capabilities are atomic: **R**ead, **C**reate, **U**pdate, **D**elete(soft), plus domain verbs (`issue`, `record`, `confirm`, `reverse`, `allocate`, `approve`). Cell format: `capability (scope)`. **Deny by default**: any action not listed is denied and cross-workspace denies return `404`.
+Capabilities are atomic: **R**ead, **C**reate, **U**pdate, **D**elete(soft), plus domain verbs (`issue`, `record`, `confirm`, `reverse`, `allocate`, `approve`, `submit`, `activate`, `terminate`, `renew`). Cell format: `capability (scope)`. **Deny by default**: any action not listed is denied and cross-workspace denies return `404`.
 
 | Resource / action | AA | PM | LO | CT | TN | CN |
 |---|---|---|---|---|---|---|
@@ -482,9 +482,10 @@ payments (mitigate: §3.3 hard boundary + FR-PAY-07 architecture test).
 
 | Role | Name/Handle | Verdict | Date |
 |---|---|---|---|
-| Product owner | @Roy-Wanyoike | ⏳ pending | — |
-| Staff engineer (independent) | PR #36 review thread | round 1: REQUEST_CHANGES (F-1..F-5) → addressed in v1.0.1 | 2026-10-23 |
-| QA representative | PR #36 review thread | round 1: REQUEST_CHANGES (7 blocking) → addressed in v1.0.1 | 2026-10-23 |
+| Product owner | @Roy-Wanyoike | ⏳ pending (required before issue #15 closes) | — |
+| Staff engineer (independent) | PR #36 review thread | round 1: REQUEST_CHANGES → v1.0.1; round 2: **APPROVE** (non-blocking one-liners landed in v1.0.2) | 2026-10-23 |
+| QA representative | PR #36 review thread | round 1: REQUEST_CHANGES → v1.0.1; round 2: REQUEST_CHANGES (1 blocking) → v1.0.2; round 3: **APPROVE** | 2026-10-23 |
 
-Round-2 re-review of v1.0.1 pending. Sign-off issue comments supersede this
-table once recorded.
+v1.0.2 approved by independent staff-engineer and QA reviews. Product-owner
+sign-off (incl. D-1 pilot country) remains the open gate for closing #15 and
+final #3 approval. Sign-off issue comments supersede this table once recorded.

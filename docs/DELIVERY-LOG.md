@@ -114,3 +114,11 @@ corrections are new entries that reference the old ones.
     CT identity-doc cell cites ct.identity_doc_access; R-contact added to
     legend; AA granted activate/terminate/renew (W) on leases; PM Expenses
     cell gains RCU+submit.
+
+## 2026-10-23 — Issue #15 PRD v1.0.2 approved by both reviewers; final editorial pass
+
+- QA round-3 focused confirmation: APPROVE (all round-2 findings resolved).
+- Staff round-2: APPROVE.
+- Final editorial commit per reviewer instruction: domain verbs added to
+  capability legend (submit/activate/terminate/renew); sign-off table updated
+  with round verdicts. PO sign-off remains the open gate.
