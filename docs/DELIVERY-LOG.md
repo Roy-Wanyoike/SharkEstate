@@ -45,3 +45,11 @@ corrections are new entries that reference the old ones.
   linear=true, enforce_admins=true.
 - Fixed gate run (value-based secret scan, this branch vs origin/dev): no
   matches (placeholders and prose do not match the pattern).
+
+## 2026-10-23 — Issue #15 opened: PRD drafted on feat/15-prd
+
+- docs/PRD.md v1.0.0-draft: vision/success measures, 6 personas, MVP boundary
+  (incl. payment-model hard boundary), 10 FR domains with stable IDs and
+  testable AC, permission matrix (6 roles), 7 state-transition tables,
+  12 edge cases (mapped to test obligations), Africa-first platform-vs-country
+  split, NFRs, open decisions D-1..D-5 (pilot country blocks #3/#5 detail).
