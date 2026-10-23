@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+build/
+dist/
+
+# env & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+token*.txt
+sharkpush*.txt
+
+# db
+*.db
+*.sqlite
+db/custom.db
+prisma/dev.db
+
+# logs & misc
+*.log
+dev.log
+server.log
+.DS_Store
+coverage/
+playwright-report/
+test-results/
+.turbo/
+.vercel

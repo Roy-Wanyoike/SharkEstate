@@ -1,0 +1,376 @@
+// SharkEstate — proposed Prisma schema (Phase 1 MVP)
+// Postgres in production; amounts are Decimal(14,2), never floats.
+// Every domain table carries orgId — see ARCHITECTURE.md §2 (org scoping).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Tenancy & identity ───────────────────────────────────────────────────────
+
+enum OrgRole {
+  OWNER
+  MANAGER
+  AGENT
+  ACCOUNTANT
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  currency  String   @default("KES")
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  properties  Property[]
+  tenants     Tenant[]
+  invoices    Invoice[]
+  payments    Payment[]
+  maintenance MaintenanceRequest[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  phone        String?
+  passwordHash String?
+  createdAt    DateTime @default(now())
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  id         String     @id @default(cuid())
+  orgId      String
+  userId     String
+  role       OrgRole
+  isDefault  Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  org  Organization @relation(fields: [orgId], references: [id])
+  user User         @relation(fields: [userId], references: [id])
+
+  @@unique([orgId, userId])
+}
+
+// ─── Properties ───────────────────────────────────────────────────────────────
+
+enum PropertyType {
+  RESIDENTIAL_BLOCK
+  ESTATE
+  STANDALONE
+  BEDSITTERS
+  COMMERCIAL
+  MIXED
+}
+
+enum UnitType {
+  SINGLE
+  BEDSITTER
+  ONE_BED
+  TWO_BED
+  THREE_BED
+  OFFICE
+  SHOP
+  STALL
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  NOTICE
+  MAINTENANCE
+}
+
+model Property {
+  id          String       @id @default(cuid())
+  orgId       String
+  name        String
+  type        PropertyType
+  county      String
+  city        String
+  addressLine String?
+  lat         Float?
+  lng         Float?
+  notes       String?
+  createdAt   DateTime     @default(now())
+
+  org         Organization @relation(fields: [orgId], references: [id])
+  units       Unit[]
+  maintenance MaintenanceRequest[]
+
+  @@unique([orgId, name])
+  @@index([orgId])
+}
+
+model Unit {
+  id          String     @id @default(cuid())
+  propertyId  String
+  label       String // "A4", "B1", "Stall 3"
+  type        UnitType
+  status      UnitStatus @default(VACANT)
+  bedrooms    Int?
+  bathrooms   Int?
+  sizeSqm     Float?
+  marketRent  Decimal    @db.Decimal(14, 2)
+  notes       String?
+  createdAt   DateTime   @default(now())
+
+  property   Property             @relation(fields: [propertyId], references: [id])
+  leases     Lease[]
+  maintenance MaintenanceRequest[]
+
+  @@unique([propertyId, label])
+}
+
+// ─── Tenants & leases ─────────────────────────────────────────────────────────
+
+enum LeaseStatus {
+  DRAFT
+  ACTIVE
+  EXPIRING
+  EXPIRED
+  TERMINATED
+  RENEWED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+}
+
+enum BillableType {
+  RENT
+  SERVICE_CHARGE
+  WATER
+  GARBAGE
+}
+
+model Tenant {
+  id               String   @id @default(cuid())
+  orgId            String
+  firstName        String
+  lastName         String
+  phone            String // E.164 — primary identifier in Kenya
+  email            String?
+  nationalId       String?
+  emergencyContact String?
+  createdAt        DateTime @default(now())
+
+  org     Organization @relation(fields: [orgId], references: [id])
+  leases  LeaseTenant[]
+
+  @@unique([orgId, phone])
+  @@index([orgId, lastName])
+}
+
+model Lease {
+  id                String       @id @default(cuid())
+  orgId             String
+  unitId            String
+  reference         String // LEASE-2026-0001, human-friendly
+  status            LeaseStatus  @default(DRAFT)
+  startDate         DateTime
+  endDate           DateTime
+  rentAmount        Decimal      @db.Decimal(14, 2)
+  depositAmount     Decimal      @db.Decimal(14, 2)
+  serviceCharge     Decimal      @default(0) @db.Decimal(14, 2)
+  billingCycle      BillingCycle @default(MONTHLY)
+  paymentDay        Int          @default(5) // day of month rent is due
+  noticePeriodDays  Int          @default(30)
+  billables         BillableType[] // which recurring items to invoice
+  notes             String?
+  createdAt         DateTime     @default(now())
+  supersededById    String? // amendment/renewal chain
+
+  org        Organization @relation(fields: [orgId], references: [id])
+  unit       Unit         @relation(fields: [unitId], references: [id])
+  tenants    LeaseTenant[]
+  invoices   Invoice[]
+  supersededBy Lease?     @relation("LeaseAmendments", fields: [supersededById], references: [id])
+  supersedes  Lease?     @relation("LeaseAmendments")
+
+  @@unique([orgId, reference])
+  @@index([orgId, status])
+  @@index([unitId])
+}
+
+model LeaseTenant {
+  leaseId    String
+  tenantId   String
+  isPrimary  Boolean @default(false)
+
+  lease  Lease  @relation(fields: [leaseId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@id([leaseId, tenantId])
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+enum InvoiceType {
+  RENT
+  DEPOSIT
+  PENALTY
+  OTHER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum PaymentMethod {
+  MPESA
+  BANK
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REVERSED
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  orgId       String
+  leaseId     String
+  number      String // INV-2026-01-0001
+  type        InvoiceType
+  status      InvoiceStatus @default(DRAFT)
+  periodStart DateTime
+  periodEnd   DateTime
+  dueDate     DateTime
+  subtotal    Decimal       @db.Decimal(14, 2)
+  total       Decimal       @db.Decimal(14, 2)
+  voidReason  String?
+  issuedAt    DateTime?
+  createdAt   DateTime      @default(now())
+
+  org     Organization  @relation(fields: [orgId], references: [id])
+  lease   Lease         @relation(fields: [leaseId], references: [id])
+  items   InvoiceItem[]
+  payments Payment[]
+
+  @@unique([orgId, number])
+  @@index([orgId, status])
+  @@index([leaseId, status])
+}
+
+model InvoiceItem {
+  id          String       @id @default(cuid())
+  invoiceId   String
+  type        BillableType
+  description String
+  amount      Decimal      @db.Decimal(14, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+/// Append-only. Mistakes are corrected with REVERSED entries, never edits.
+/// Balance on any invoice = sum(items.amount) − sum(confirmed payments).
+model Payment {
+  id           String        @id @default(cuid())
+  orgId        String
+  invoiceId    String
+  amount       Decimal       @db.Decimal(14, 2)
+  method       PaymentMethod
+  status       PaymentStatus @default(PENDING)
+  reference    String // our idempotency key for callbacks
+  mpesaReceipt String?
+  paidByPhone  String?
+  paidAt       DateTime
+  rawCallback  Json? // raw Daraja payload, stored before processing
+  createdAt    DateTime      @default(now())
+
+  org     Organization @relation(fields: [orgId], references: [id])
+  invoice Invoice      @relation(fields: [invoiceId], references: [id])
+
+  @@unique([method, reference])
+  @@index([orgId, status])
+  @@index([invoiceId])
+}
+
+// ─── Operations ───────────────────────────────────────────────────────────────
+
+enum TicketStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+model MaintenanceRequest {
+  id          String         @id @default(cuid())
+  orgId       String
+  propertyId  String
+  unitId      String?
+  title       String
+  description String
+  priority    TicketPriority @default(MEDIUM)
+  status      TicketStatus   @default(OPEN)
+  vendor      String?
+  cost        Decimal?       @db.Decimal(14, 2)
+  resolvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  org      Organization @relation(fields: [orgId], references: [id])
+  property Property     @relation(fields: [propertyId], references: [id])
+  unit     Unit?        @relation(fields: [unitId], references: [id])
+
+  @@index([orgId, status])
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  orgId      String
+  entityType String // "lease" | "unit" | "invoice" | "maintenance"
+  entityId   String
+  kind       String // "LEASE_PDF" | "ID_COPY" | "PHOTO" | "RECEIPT" | ...
+  url        String
+  fileName   String
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  @@index([orgId, entityType, entityId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  orgId      String
+  actorId    String? // null = system/cron
+  action     String // "INVOICE.ISSUED", "PAYMENT.CONFIRMED", ...
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  org   Organization @relation(fields: [orgId], references: [id])
+  actor User?        @relation(fields: [actorId], references: [id])
+
+  @@index([orgId, entityType, entityId])
+  @@index([orgId, createdAt])
+}
