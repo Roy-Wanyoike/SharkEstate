@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 0.9.0 (draft for review — final approval gated on PO sign-off of PRD + D-1/D-2) |
+| Version | 0.9.1 (review round 1 fixes — final approval gated on PO sign-off of PRD + D-1/D-2) |
 | Status | In review (issue #3) |
 | Depends on | [PRD](../PRD.md) v1.0.2 (merged; PO sign-off pending), issue #1 confirmed decisions |
 | Decision records | [adr/](./adr/) — ADR-0001 … ADR-0009 |
@@ -64,17 +64,21 @@ never via shared database writes.
 
 ```
 Workspace 1─* Membership *─1 User
-Workspace 1─* Property 1─* Building 1─* Unit
+Workspace 1─* Property 1─* Building 1─* Unit   (unit MAY attach directly to Property when single-building)
 Property *─* Party(Owner)          (ownership; management = Delegation)
 Unit 1─* Tenancy *─* Party(Tenant) (LeaseTenant)
+Lease ──self── predecessor/successor (renewal chain, E-06)
+Lease carries depositAmount; deposit return = Task + Expense records (FR-LSE-03)
 Tenancy 1─* Invoice 1─* InvoiceItem
+Tenancy 1─* Payment                (unallocated/credit anchor — FR-PAY-08, E-03/E-07)
 Payment 1─* Allocation *─1 Invoice
-Payment 1─1 Receipt (0..1)         (issued on confirmation; superseded on reversal)
-Tenancy 1─* MaintenanceRequest → WorkOrder → Expense
+Payment 1─1 Receipt (0..1)         (issued on confirmation; superseded on reversal — E-14)
+Property 1─* Expense ──0..1── WorkOrder
+Expense carries approval state (§7.6) + reversal reference
 AuditEvent: polymorphic ref (entityType, entityId) + actor + action
 ```
 
-(Complete field-level schema ships as versioned SQL migrations with the first
+(Field-level schema ships as versioned SQL migrations with the first
 implementation PR — issue #4/#5; this diagram is the boundary contract.)
 
 ## 4. Tenancy isolation & authorization (PRD §6 implementation)
@@ -96,10 +100,30 @@ implementation PR — issue #4/#5; this diagram is the boundary contract.)
 
 - **Money = `BIGINT` minor units** in PostgreSQL (no floats anywhere);
   currency per workspace, locked at first financial record (PRD FR-REG-02).
-- **Append-only financial records:** payments/allocations/receipts/expenses
-  are never updated or deleted; corrections are reversal/corrective records.
-  Enforced by DB privileges (application role lacks UPDATE/DELETE on these
-  tables) + architecture tests asserting absence of mutation paths.
+- **Immutability is scoped to business fields; lifecycle is a guarded state path.**
+  Business fields of financial records (amount, currency, method, payer
+  reference, evidence pointer, receipt document content/number, allocation
+  amounts) are **immutable for the record's lifetime**; lifecycle status
+  (PENDING→CONFIRMED→REVERSED, ISSUED→SUPERSEDED, DRAFT→…→POSTED→REVERSED)
+  changes only through domain commands implementing the PRD §7 machines.
+  Enforced by DB privileges: the application role has **no DELETE anywhere**
+  and **no UPDATE on business-field columns** of payments, allocations,
+  receipts, expenses, audit_events; status/correction columns are writable
+  only via the domain layer's transactions. Audit edits/deletes are rejected
+  at the API layer with `409` before reaching the DB (FR-IDW-07), so a
+  privilege denial never surfaces as a 5xx to clients.
+- **Concurrency control is explicit per invariant:** allocation commands
+  execute inside one transaction that takes `SELECT … FOR UPDATE` on the
+  payment row and the invoice row in deterministic ID order — the Σ-caps
+  (PRD §7.4) cannot be raced by two concurrent allocations; lease activation
+  is guarded by a **partial unique index** on `(unit_id) WHERE status IN
+  ('ACTIVE','EXPIRING')`, so exactly one activation wins and losers receive
+  `409 UNIT_OCCUPIED` (E-05). Both races are cases in the FIN-INVARIANTS
+  suite.
+- **Fail-closed currency guard:** any financial sum whose rows do not share
+  one currency is rejected (`CURRENCY_MISMATCH`); FX conversions are explicit
+  **ConversionRecord** events (rate, source, timestamp) owned by the regional
+  module and linked to any converted display (FR-REG-02, E-11).
 - **Balance invariants** (property-based tests, PRD §14 suite FIN-INVARIANTS):
   invoice state ⇔ Σ surviving allocations; Σ allocations ≤ payment; credit =
   Σ confirmed non-reversed − Σ surviving allocations (per lease).
@@ -117,9 +141,17 @@ implementation PR — issue #4/#5; this diagram is the boundary contract.)
   **regional** module tables + config, never in shared code (PRD FR-REG-04).
 - Payment/SMS/email/WhatsApp providers implement Go **ports** (interfaces)
   with per-country adapter registry; unavailable providers are disabled at
-  the API surface (FR-REG-03).
+  the API surface (FR-REG-03). **Provider callbacks are treated as
+  authoritative confirmation evidence only after signature verification and
+  replay protection**; unverified callbacks are recorded but never confirm
+  (PRD §3.3).
 - Pilot country selection (D-1) affects only seeded profile data + which
-  adapters ship configured — recorded in ADR-0009 when decided.
+  adapters ship configured — it will be recorded in **ADR-0010** when the
+  product owner signs off (FR-REG-05).
+- Tenant self-service surfaces (FR-TSP) are portal surfaces over the same
+  API; their server-side owners are: payment instructions → regional/workspace
+  config (FR-TSP-04); lease documents → leases module + ADR-0008 storage
+  (FR-TSP-03); bulk unit onboarding → portfolio module (FR-POR-05).
 
 ## 7. Deployment, environments, operations (summary; SLOs below)
 
@@ -135,16 +167,30 @@ implementation PR — issue #4/#5; this diagram is the boundary contract.)
 - Observability: OpenTelemetry (traces, metrics, logs) with **redaction
   rules** — no personal data, tokens, or money values in spans/log lines
   (tests assert redaction). Health/readiness endpoints per module.
+- **Identity/revocation (mechanism):** access tokens ≤ 15 min TTL; the
+  backend enforces a **per-request membership/revocation-version check**
+  backed by a cache whose staleness is bounded at ≤ 60 s (in-process per
+  replica — meets the bound multi-replica without Redis); introspection is
+  reserved for sensitive operations. Revocation (deactivation, delegation
+  revoke, portal deactivation) bumps the version; effect: denied at next
+  request, ≤ 60 s for cached results (FR-IDW-03/05, E-10). Test: revoke →
+  probe endpoints until `401`, assert ≤ 60 s (authz suite).
 - SLOs (initial, per PRD §10 baselines): API p95 < 300 ms (reads) / < 800 ms
-  (writes) at pilot scale; dashboard endpoints < 3 s p95; notification intent
-  durability 100% (intent survives any provider outage); backup RPO ≤ 24 h,
-  RTO ≤ 4 h (issue #31 formalizes).
+  (writes) at pilot scale; dashboard endpoints < 3 s p95; **monthly invoice
+  generation run for 50 leases < 60 s**; notification intent durability 100%
+  (intent survives any provider outage); backup RPO ≤ 24 h, RTO ≤ 4 h (issue
+  #31 formalizes).
 
 **Failure modes & recovery (top 5):** provider callback loss → reconciliation
 sweep job + manual re-confirmation path (PRD §7.3); duplicate webhook delivery
 → idempotency keys; DB failover → PITR backups + runbook (#31); bad migration
 → forward-fix policy + pre-merge staging rehearsal; secret leakage → rotation
-runbook + scanning gate (#14).
+runbook + scanning gate (#14). **Queue failure modes:** crashed workers lose
+claims to a visibility timeout (lease reclaimed); poison messages move to a
+dead-letter state that is staff-visible with alerting (notifications map to
+EXHAUSTED, ADR-0007); enqueue is transactional — the job row commits in the
+same transaction as the business change, so intents/schedules can never be
+lost after a commit.
 
 ## 8. Threat model (STRIDE summary — full register tracked in #14)
 
@@ -184,3 +230,4 @@ when #23 lands.
 | [ADR-0007](./adr/0007-notifications-provider-ports.md) | Notification intents with consent-aware provider ports |
 | [ADR-0008](./adr/0008-private-object-storage.md) | Private S3-compatible object storage with scoped presigned access |
 | [ADR-0009](./adr/0009-deferred-infrastructure.md) | Deferred/rejected infrastructure (Redis, Temporal, NATS, microservices) with trigger conditions |
+| ADR-0010 *(planned)* | Pilot country selection — created on D-1 product-owner sign-off |

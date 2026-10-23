@@ -134,3 +134,24 @@ corrections are new entries that reference the old ones.
   STRIDE threat-model summary, deferred-infrastructure triggers.
 - ADR-0001..0009 recorded (Nygard format). README links updated.
 - Status: 0.9.0 draft — final approval gated on PO sign-off (PRD + D-1/D-2).
+
+## 2026-10-23 — Issue #3 architecture v0.9.1 (staff review round 1 addressed)
+
+- Independent staff review: REQUEST_CHANGES, 5 blocking findings — all fixed:
+  1. Immutability scoped to business fields; lifecycle via guarded status
+     paths; per-table DB privilege model spelled out (ADR-0003 + §5).
+  2. Concurrent allocation: SELECT…FOR UPDATE on payment+invoice in
+     deterministic order; lease activation guarded by partial unique index on
+     (unit_id) WHERE status IN (ACTIVE, EXPIRING); races added to
+     FIN-INVARIANTS.
+  3. Revocation ≤60 s mechanized: per-request revocation-version check with
+     ≤60 s-stale in-process cache; introspection for sensitive ops; revoke→401
+     probe test (ADR-0004 + §7).
+  4. ER boundary contract completed: Payment↔Tenancy (credit/unallocated),
+     lease predecessor/successor chain, Property↔Expense(0..1 WorkOrder),
+     deposit on lease, unit-without-building note.
+  5. FX ConversionRecord ownership assigned to regional module; fail-closed
+     CURRENCY_MISMATCH guard added to invariants.
+- Non-blocking: queue failure-mode design (transactional enqueue, visibility
+  lease, dead-letter), TSP server-side owner mapping, D-1 → planned ADR-0010,
+  callback signature/replay protection requirement, invoice-gen SLO added.

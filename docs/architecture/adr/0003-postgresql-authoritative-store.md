@@ -19,9 +19,16 @@ precision (KES 2dp, XOF 0dp).
   compensating-migration notes otherwise).
 - Background jobs: durable **PostgreSQL-backed queue** (SKIP LOCKED) with
   idempotency keys and at-least-once delivery + exactly-once effects via
-  unique indexes. Redis/Temporal deliberately deferred (ADR-0009).
-- Append-only enforcement: application DB role lacks UPDATE/DELETE on
-  payments, allocations, receipts, expenses, audit_events.
+  unique indexes. Queue semantics: transactional enqueue (job row commits in
+  the same transaction as the business change), claim-lease with visibility
+  timeout for crashed workers, poison messages → staff-visible dead-letter
+  with alerting. Redis/Temporal deliberately deferred (ADR-0009).
+- Immutability enforcement (business-field level, aligned with PRD §7 state
+  machines): application DB role has **no DELETE** on financial tables and
+  **no UPDATE on business-field columns** (amount, currency, method, payer
+  reference, evidence, receipt document, allocation amounts); lifecycle status
+  columns change only via domain commands inside transactions. Audit table:
+  no UPDATE/DELETE at any layer (API pre-checks return 409 per FR-IDW-07).
 
 ## Consequences
 Strong integrity guarantees and one less system to operate; queue semantics
