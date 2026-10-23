@@ -53,3 +53,38 @@ corrections are new entries that reference the old ones.
   testable AC, permission matrix (6 roles), 7 state-transition tables,
   12 edge cases (mapped to test obligations), Africa-first platform-vs-country
   split, NFRs, open decisions D-1..D-5 (pilot country blocks #3/#5 detail).
+
+## 2026-10-23 — Issue #15 PRD revision v1.0.1 (review round 1 addressed)
+
+- Two independent reviews (staff engineer, QA) returned REQUEST_CHANGES with
+  overlapping blocking findings on the v1.0.0 state machines and financial
+  semantics. v1.0.1 resolves ALL blocking findings:
+  - Invoice: OVERDUE became a derived flag (coexists with PARTIALLY_PAID);
+    VOID reachable from DRAFT/ISSUED/PARTIALLY_PAID/PAID (allocations reversed
+    first); DRAFT discard added; recompute rule ties state to allocations.
+  - Payment: FAILED terminal except staff re-confirmation via verified
+    statement evidence (late statement lines); REVERSED effects deterministic
+    (corrective allocations, invoice recompute, receipt SUPERSEDED and hidden
+    from tenant list); allocations restricted to CONFIRMED payments / non-VOID
+    invoices; credit (overpayment) model added FR-PAY-08 + E-13.
+  - Global error contract for all machines: invalid/guard-failed transition ->
+    409 TRANSITION_INVALID, state unchanged, financial attempts audited.
+  - Expenses promoted to minimal MVP domain FR-EXP-01..03 (statements now
+    honestly reconcile to the minor unit).
+  - Currency scope pinned: fixed per workspace at first financial record;
+    statements per workspace; cross-workspace rollups out of scope; E-11
+    expects per-currency breakdown (FX only as explicit recorded action).
+  - Lease machine: DRAFT->CANCELLED, backdated EXPIRED renewal, holdover
+    resolution, EXPIRING as real state with configurable window; E-09
+    CLOSED->IN_PROGRESS reopen now legal (with work-order relink).
+  - Permission matrix made mechanically testable: atomic capability legend,
+    receipt issue/view split, payment record/confirm/reverse split, second-
+    person cash verification policy, named policy keys for all footnoted
+    cells, tenant report set enumerated (FR-RPT-06), cross-workspace 404
+    convention; rows added for inspections and tasks.
+  - Notification machine: EXHAUSTED terminal state, SUPPRESSED reachable at
+    send-time; retry cap named policy.
+  - Testability: aging buckets anchored to due date (0-30/31-60/61+), invoice
+    numbering semantics (gaps permitted after VOID), quantified NFRs (p95,
+    dataset shape, 2G profile 250kbps/500ms RTT), FR ACs de-subjectivized.
+  - New edge cases E-13 (credit) and E-14 (receipt superseded by reversal).
