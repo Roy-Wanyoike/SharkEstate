@@ -122,3 +122,44 @@ corrections are new entries that reference the old ones.
 - Final editorial commit per reviewer instruction: domain verbs added to
   capability legend (submit/activate/terminate/renew); sign-off table updated
   with round verdicts. PO sign-off remains the open gate.
+
+## 2026-10-23 — Issue #3 opened: architecture blueprint + ADRs on feat/3-architecture
+
+- docs/architecture/ARCHITECTURE.md v0.9.0: system shape (Go modular monolith
+  + Next.js 16 frontend + PostgreSQL), domain module map with boundary rules,
+  entity relationships, workspace isolation + authz implementation contract,
+  financial integrity implementation contract (BIGINT minor units, append-only
+  via DB privileges, balance invariants, no-money-movement architecture test),
+  regional/provider port boundaries, environments + SLOs + failure modes,
+  STRIDE threat-model summary, deferred-infrastructure triggers.
+- ADR-0001..0009 recorded (Nygard format). README links updated.
+- Status: 0.9.0 draft — final approval gated on PO sign-off (PRD + D-1/D-2).
+
+## 2026-10-23 — Issue #3 architecture v0.9.1 (staff review round 1 addressed)
+
+- Independent staff review: REQUEST_CHANGES, 5 blocking findings — all fixed:
+  1. Immutability scoped to business fields; lifecycle via guarded status
+     paths; per-table DB privilege model spelled out (ADR-0003 + §5).
+  2. Concurrent allocation: SELECT…FOR UPDATE on payment+invoice in
+     deterministic order; lease activation guarded by partial unique index on
+     (unit_id) WHERE status IN (ACTIVE, EXPIRING); races added to
+     FIN-INVARIANTS.
+  3. Revocation ≤60 s mechanized: per-request revocation-version check with
+     ≤60 s-stale in-process cache; introspection for sensitive ops; revoke→401
+     probe test (ADR-0004 + §7).
+  4. ER boundary contract completed: Payment↔Tenancy (credit/unallocated),
+     lease predecessor/successor chain, Property↔Expense(0..1 WorkOrder),
+     deposit on lease, unit-without-building note.
+  5. FX ConversionRecord ownership assigned to regional module; fail-closed
+     CURRENCY_MISMATCH guard added to invariants.
+- Non-blocking: queue failure-mode design (transactional enqueue, visibility
+  lease, dead-letter), TSP server-side owner mapping, D-1 → planned ADR-0010,
+  callback signature/replay protection requirement, invoice-gen SLO added.
+
+## 2026-10-23 — Issue #3 architecture v0.9.2 (round-2 minor patches; staff APPROVE)
+
+- Staff round 2: APPROVE. Minor patches folded per reviewer instruction:
+  invoice DRAFT-window carve-out note in privilege model; EXPIRED-holdover
+  primary-gate clarification for the activation index; regional module
+  key-entities gains ConversionRecord; read-models-are-views note; ADR index
+  header notes planned ADR-0010; probe-test status-code precision.

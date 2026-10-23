@@ -21,6 +21,7 @@ only through the documented release gate.
 | [docs/BRANCH-GOVERNANCE.md](./docs/BRANCH-GOVERNANCE.md) | `dev` → `main` policy, protection rules, local release gate |
 | [docs/local-development.md](./docs/local-development.md) | Environment setup and the command map |
 | [docs/DELIVERY-LOG.md](./docs/DELIVERY-LOG.md) | Append-only engineering delivery record |
+| [docs/architecture/](./docs/architecture/ARCHITECTURE.md) | Architecture blueprint + ADRs (issue #3) |
 | [docs/proposals/phase0/](./docs/proposals/phase0/README.md) | Early design proposals — **superseded, pending #3** |
 
 ## Approved technology baseline (pending formal ADR sign-off in #3)
@@ -32,10 +33,11 @@ only through the documented release gate.
 - **APIs:** Versioned REST with OpenAPI specifications
 - **Observability:** OpenTelemetry (metrics, logs, traces)
 
-The definitive stack, domain boundaries, and ADRs are approved through
-[#3](https://github.com/Roy-Wanyoike/SharkEstate/issues/3). Do not start feature
-implementation before that approval, and do not introduce alternative
-frameworks, databases, or identity systems without a documented ADR decision.
+The blueprint and ADRs live in [docs/architecture/](./docs/architecture/ARCHITECTURE.md)
+(pending final approval through [#3](https://github.com/Roy-Wanyoike/SharkEstate/issues/3)).
+Do not start feature implementation before that approval, and do not introduce
+alternative frameworks, databases, or identity systems without a documented
+ADR decision.
 
 ## Governance essentials
 
