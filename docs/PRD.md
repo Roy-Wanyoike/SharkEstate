@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | Document | `docs/PRD.md` |
-| Version | 1.0.1-draft |
+| Version | 1.0.2-draft |
 | Status | In review — requires product-owner, staff-engineer, and QA sign-off (issue #15) |
-| Revision | 1.0.1 incorporates independent staff-engineer and QA review round 1 (state-machine completeness, allocation semantics, error contracts, expense domain, currency-scope rule, permission-matrix mechanicalness) |
+| Revision | 1.0.1 incorporates independent staff-engineer and QA review round 1 (state-machine completeness, allocation semantics, error contracts, expense domain, currency-scope rule, permission-matrix mechanicalness). 1.0.2 incorporates round 2 (Tasks matrix row, allocatable-invoice-states pin, reconciliation-view membership for PENDING items, receipt content for unallocated payments, determinism nits, matrix editorial) |
 | Source of truth | GitHub issue #1 (product direction + confirmed decisions), issue #15 |
 | Related | #3 (architecture — must align), #14 (quality gates) |
 | Requirement IDs | Stable across versions; deprecation is a documented change, never silent removal |
@@ -183,7 +183,7 @@ ACs marked `[process]` are review-checklist items (not CI-automatable).
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
 | FR-LSE-01 | Tenant profiles are persistent persons, distinct from tenancies | AC: moving tenant to new unit/landlord preserves prior tenancy, payment, and maintenance history; profile never overwritten by a new tenancy |
-| FR-LSE-02 | Duplicate tenant detection is reviewable, never auto-merge | AC: match predicate — normalized phone equal OR (normalized full-name equal AND shared unit history) — flags likely duplicates with evidence; merge requires human approval; merge is audit-logged with full before/after |
+| FR-LSE-02 | Duplicate tenant detection is reviewable, never auto-merge | AC: match predicate — normalized phone (E.164) equal OR (normalized full name — casefolded, whitespace-collapsed — equal AND shared unit history) — flags likely duplicates with evidence; merge requires human approval; merge is audit-logged with full before/after |
 | FR-LSE-03 | Tenancy/lease: unit, tenants (one or more), term dates, rent, **deposit amount (tracked on lease; return handled as task + expense record; no scheme integration in MVP)**, billables, cycle, payment day, notice period | AC: lease dates validated against unit availability; activation rejected if overlapping active tenancy on unit (concurrency-safe: parallel attempts tested — exactly one wins) |
 | FR-LSE-04 | Lease lifecycle states per §7.1; renewals create linked successor leases | AC: state transitions enforced server-side; invalid transitions rejected per §7 error contract; renewal preserves history and links predecessor (including backdated renewal from EXPIRED per §7.1) |
 | FR-LSE-05 | Lease amendments are versioned (no destructive edits after activation) | AC: post-activation changes create amendment version with audit trail; reports cite the version effective at their period |
@@ -196,7 +196,7 @@ ACs marked `[process]` are review-checklist items (not CI-automatable).
 | FR-RNT-01 | Rent schedule generation from lease terms (cycle, day, billables) | AC: schedule previews exactly match issued invoices; generation is idempotent (re-run does not duplicate invoices for a period) |
 | FR-RNT-02 | Invoice issuance: per lease per period; line items for each billable; currency per workspace (fixed per FR-REG-02) | AC: invoice totals = Σ line items; mixed currencies impossible; invoice numbers unique, monotonically increasing per workspace; gaps permitted after VOID (no gapless requirement) |
 | FR-RNT-03 | Invoice states per §7.2; corrections via void-and-reissue (or credit note where country profile enables) | AC: issued invoices immutable; void requires reason, is audit-logged, requires allocations reversed first (§7.2/§7.4); reissued invoice links to voided one |
-| FR-RNT-04 | Arrears computed from issued invoices and **confirmed, non-reversed** payment allocations only. Aging measured in days past due date; buckets (0–30], (31–60], (61+] | AC: balance = Σ invoice totals (non-VOID) − Σ confirmed allocations; partial payments reflected; boundary values 30/31/60/61 days covered by tests; arrears reproducible from records |
+| FR-RNT-04 | Arrears computed from issued invoices and **confirmed, non-reversed** payment allocations only. Aging measured in days past due date; buckets (0–30], (31–60], (61+] — day 31 falls in 31–60, day 61 in 61+ | AC: balance = Σ invoice totals (non-VOID) − Σ confirmed allocations; partial payments reflected; boundary values 30/31/60/61 days covered by tests; arrears reproducible from records |
 | FR-RNT-05 | Reminders/arrears escalation hooks driven by named workspace policy `billing.escalation_schedule` (default: day +3 reminder, day +7 final notice, day +14 escalation flag — data, editable) | AC: reminder generation is idempotent; escalation actions audit-logged; delivery truthfulness per FR-NTF-04 |
 
 ### 5.6 Payments (FR-PAY)
@@ -204,13 +204,13 @@ ACs marked `[process]` are review-checklist items (not CI-automatable).
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
 | FR-PAY-01 | Record payments from any rail (mobile money, bank, cash) with evidence reference; amount applies against the **lease's outstanding balance** | AC: payment requires method, amount, payer reference, evidence pointer; allocations cannot exceed invoice total; overpayment remainder becomes credit per FR-PAY-08 |
-| FR-PAY-02 | Allocation of payments to invoices — **only from CONFIRMED, non-REVERSED payments, to non-VOID invoices** (manual first; suggestions allowed) | AC: allocations sum ≤ payment amount; partial allocation allowed; allocation changes are corrective allocation records (append-only), audit-logged; allocating from PENDING/FAILED/REVERSED payment or to VOID invoice rejected (`409`) |
+| FR-PAY-02 | Allocation of payments to invoices — **only from CONFIRMED, non-REVERSED payments, to invoices in states {ISSUED, PARTIALLY_PAID}** (manual first; suggestions allowed) | AC: allocations sum ≤ payment amount; partial allocation allowed; allocation changes are corrective allocation records (append-only), audit-logged; allocating from PENDING/FAILED/REVERSED payment, or to DRAFT/VOID/PAID invoice, rejected (`409`) |
 | FR-PAY-03 | Idempotent imports/callbacks: duplicates collapsed by deterministic key | AC: same provider reference processed twice (including concurrently) yields exactly one payment record; second attempt returns the original result |
-| FR-PAY-04 | Confirmation states per §7.3; receipt issuance only on confirmed | AC: pending payment produces no receipt; confirmation requires authoritative evidence event; receipt references payment and allocation-period invoice; receipts are immutable documents whose **visibility** follows payment status (FR-PAY-06) |
-| FR-PAY-05 | Reconciliation view: unmatched confirmed payments, invoices with outstanding balance, mismatches | AC: unmatched items listable; resolving match creates audited allocation; dashboard/query equality spot-check reproducible from records |
+| FR-PAY-04 | Confirmation states per §7.3; receipt issuance only on confirmed | AC: pending payment produces no receipt; receipt **auto-issued at confirmation**; when the payment has zero allocations (unmatched/credit), the receipt carries zero invoice lines and references the lease/tenant; receipt references payment; receipts are immutable documents whose **visibility** follows payment status (FR-PAY-06) |
+| FR-PAY-05 | Reconciliation view: unmatched confirmed payments **plus PENDING payments flagged awaiting-evidence/disputed**, invoices with outstanding balance, mismatches | AC: unmatched items listable with status shown; resolving match creates audited allocation; dashboard/query equality spot-check reproducible from records |
 | FR-PAY-06 | Corrections via reversal entries; no destructive edits/deletes. Reversal effects are deterministic: corrective allocations reverse the original ones; affected invoices recompute (PAID→PARTIALLY_PAID/ISSUED); the issued receipt remains as an immutable historical document, is marked **superseded by reversal** (reversal notice attached), and disappears from the tenant's confirmed-receipts list | AC: reversal references original; net effect reproducible; portal confirmed-receipts list shows only receipts whose payment is CONFIRMED (test: reversal → receipt hidden, balance restored); audit includes reason and actor |
 | FR-PAY-07 | No money movement/custody/settlement in MVP | AC: no API initiates transfers; provider port exists but implementations limited to record/reconcile adapters; architecture test asserts absence of payout code paths |
-| FR-PAY-08 | Credit: overpayment remainder (confirmed, unallocated amount) is held as credit on the tenant's lease; credit is consumed only by explicit allocation to a future invoice — **never auto-applied** | AC: credit balance = Σ confirmed payments − Σ allocations (per lease); consuming credit creates a normal audited allocation; credit is not a payment-method for money movement |
+| FR-PAY-08 | Credit: overpayment remainder (confirmed, unallocated, non-reversed amount) is held as credit on the tenant's lease; credit is consumed only by explicit allocation to a future invoice — **never auto-applied** | AC: credit balance = Σ confirmed non-reversed payments − Σ surviving allocations (per lease); consuming credit creates a normal audited allocation; credit is not a payment-method for money movement |
 
 ### 5.7 Maintenance (FR-MNT)
 
@@ -275,8 +275,8 @@ Capabilities are atomic: **R**ead, **C**reate, **U**pdate, **D**elete(soft), plu
 | Properties / buildings / units | RCUD (W) | RCUD (P) | R (O) | R (A) | R (O unit) | — |
 | Owners & delegation grants | RCU (W) | R (P) | RCU (O) | — | — | — |
 | Tenant profiles | RCU (W) | RCU (P) | R (O) | R-contact (A)² | R (O) | — |
-| Tenant identity documents | R (W) | R (P)² | R (O) | — (unless `pm.identity_doc_access` grants CT) | R (O) | — |
-| Tenancies / leases | RCU (W) | RCU (P) + activate/terminate/renew (P) | R (O) | R (A) | R (O) | — |
+| Tenant identity documents | R (W) | R (P)² | R (O) | — (unless `ct.identity_doc_access` grants CT) | R (O) | — |
+| Tenancies / leases | RCU (W) + activate/terminate/renew (W) | RCU (P) + activate/terminate/renew (P) | R (O) | R (A) | R (O) | — |
 | Rent schedules & invoices | RCU (W) + issue (W) | RCU (P) + issue (P) | R (O) | — | R (O) | — |
 | Payment records | R (W) + record/confirm/reverse (W) | R (P) + record/confirm (P)³ | R (O) | — | R (O) | — |
 | Allocations | RC (W) | RC (P) | R (O) | — | R (O) | — |
@@ -284,14 +284,18 @@ Capabilities are atomic: **R**ead, **C**reate, **U**pdate, **D**elete(soft), plu
 | Maintenance requests | RCUD (W) | RCUD (P) | R (O) | RU (A) | RC (O) + U while OPEN (O) | R (A) |
 | Inspections | RCU (W) | RCU (P) | R (O) | RC (A) | R (O unit) | — |
 | Work orders | RCU (W) + approve (W) | RCU (P) + approve (P, ≤ threshold) | approve (O, > `maintenance.approval_threshold`) | RU (A) | R (O) | RU (A) |
-| Expenses | RCUD (W) + approve (W) | RC (P) + approve (P, ≤ threshold) | approve (O, > `expenses.approval_threshold`) | — | — | — |
+| Expenses | RCUD (W) + approve (W) | RCU (P) + submit (P) + approve (P, ≤ threshold) | approve (O, > `expenses.approval_threshold`) | — | — | — |
+| Documents / media (unit media, lease docs, expense/inspection evidence) | RCU (W) | RCU (P) | R (O) | RC (A) | R (O) | RU (A) |
+| Tasks (follow-ups, approvals, escalations — FR-NTF-06) | RCU (W) | RCU (P) | — | RU (A) | — | RU (A) |
 | Reports / statements | R (W) | R (P) | R (O) | — | R (O)⁴ (FR-RPT-06 set) | — |
 | Own notification preferences | RU (O) | RU (O) | RU (O) | RU (O) | RU (O) | RU (O) |
 
 ¹ PM sees audit for scoped properties; admin-only categories require `audit.admin_categories` policy.
-² Default: PM/CT do **not** see raw identity documents; grantable via named policies (`pm.identity_doc_access`, `ct.identity_doc_access`). Contact info visible to CT for assigned units.
-³ `confirm` and `reverse` are AA/PM capabilities only; self-confirmation of a cash payment recorded by the same actor requires a second-person verification per policy `payments.second_person_verification` (default on for cash) — recorded as audit evidence.
+² Default: PM/CT do **not** see raw identity documents; grantable via named policies (`pm.identity_doc_access`, `ct.identity_doc_access`). Contact info visible to CT for assigned units (`R-contact`).
+³ `confirm`/`reverse` may be granted only to AA/PM; per the table **`reverse` is AA-only** (PM-caused errors reversed by AA, dual-control). Second-person cash verification: policy `payments.second_person_verification` defaults on for cash, off for electronic rails (provider evidence suffices).
 ⁴ Enumerated: own balance, own confirmed receipts, own statements (FR-RPT-06). No portfolio reports.
+
+Legend extras: `R-contact` = read of contact fields only (name, phone, email — not identity documents).
 
 **Defaults:** deny by default; every allow above is explicit in authorization
 policy and tested both ways (permitted **and** denied). Matrix is converted
@@ -364,7 +368,7 @@ Allocatable: CONFIRMED only. REVERSED and FAILED are non-allocatable. REVERSED i
 
 | Entity | States/lifecycle | Rules |
 |---|---|---|
-| Allocation | exists → corrected-by-successor (append-only) | created against (CONFIRMED payment, non-VOID invoice); corrective allocation supersedes, never edits; Σ allocations per payment ≤ payment amount; Σ per invoice ≤ invoice total |
+| Allocation | exists → corrected-by-successor (append-only) | created against (CONFIRMED payment, invoice in {ISSUED, PARTIALLY_PAID}); corrective allocation supersedes, never edits; Σ allocations per payment ≤ payment amount; Σ per invoice ≤ invoice total |
 | Receipt | ISSUED → SUPERSEDED (payment reversed) | immutable document; generated from confirmed payment; SUPERSEDED keeps document with reversal notice attached; hidden from tenant confirmed-receipts list (FR-PAY-06); regeneration of the *view* (PDF) is allowed, re-issuance of a new receipt number is impossible |
 
 ### 7.5 Maintenance request / Work order
@@ -399,8 +403,8 @@ One intent, many channel attempts; attempts append-only; duplicates collapsed (F
 | E-07 | Disputed payment (tenant claims paid, no evidence) | Payment stays PENDING; appears in unmatched list; staff may append an **audited dispute note** (append-only field on payment record); no receipt; never auto-resolves |
 | E-08 | Failed SMS at arrears day +3 | Intent survives; attempt FAILED visible; retry with backoff per §7.7; suppression re-checked at send |
 | E-09 | Reopened repair after CLOSED | Request CLOSED→IN_PROGRESS with reason (§7.5); work order relinked or new order created; history intact |
-| E-10 | Revoked agency access to owner portfolio | Access denied at next request and within 60 s for cached tokens; pre-revocation sensitive reads were audit-logged; landlord notification task created per `access.revocation_notify` policy |
-| E-11 | Mixed-currency portfolio query | Cross-currency sums rejected with explicit error; reports show **per-currency breakdown**; FX conversion only as explicit action citing a recorded conversion (rate, source, timestamp) |
+| E-10 | Revoked agency access to owner portfolio | Access denied at next request and within 60 s for cached tokens; pre-revocation sensitive reads were audit-logged; landlord notification task created (policy `access.revocation_notify`, default on) |
+| E-11 | Any record whose currency ≠ workspace currency (possible only via historical import bugs or future features) | Sums rejected — never summed cross-currency (fail-closed defense-in-depth); the mixed-currency fixture is not constructible through specified behavior; any future multi-currency reporting requires a new ADR + recorded FX conversions |
 | E-12 | Workspace A user guesses workspace B resource URLs/IDs | Response is `404` (indistinguishable from nonexistent — convention), attempt audit-logged (rate-limited) |
 | E-13 | Overpayment (credit) | Allocation caps at invoice total; remainder held as lease credit (FR-PAY-08); consumed only by explicit later allocation; never auto-applied |
 | E-14 | Receipt issued, payment later reversed | Receipt becomes SUPERSEDED with reversal notice; hidden from tenant confirmed-receipts list; invoice recomputes; balance restored; full audit chain |
@@ -455,7 +459,7 @@ numbers are **p95** unless stated.
 | D-2 | Identity provider hosting | Keycloak, self-hosted in staging/prod; sandbox uses compose | ⏳ ADR in #3 |
 | D-3 | Payment provider for pilot sandbox (record/reconcile adapter) | M-Pesa Daraja sandbox | ⏳ credentials required before #9 |
 | D-4 | Kiswahili scope for MVP UI | Core tenant/caretaker surfaces only | ⏳ #28 |
-| D-5 | Late-fee/penalty policy default | Off by default; per-country enablement (`billing.late_fee_enabled`) | ⏳ country profile data after D-1 |
+| D-5 | Late-fee/penalty policy default | Off by default (`billing.late_fee_enabled`); the flag is **reserved** — no late-fee behavior is specified in MVP (post-MVP feature; enabling it before behavior ships must fail closed) | ⏳ country profile data after D-1 |
 
 **Open questions (tracked, not silently assumed):**
 - FX rate source/trust for explicit conversions (MVP: manual rate + source URL recorded; no automatic FX)

@@ -88,3 +88,29 @@ corrections are new entries that reference the old ones.
     numbering semantics (gaps permitted after VOID), quantified NFRs (p95,
     dataset shape, 2G profile 250kbps/500ms RTT), FR ACs de-subjectivized.
   - New edge cases E-13 (credit) and E-14 (receipt superseded by reversal).
+
+## 2026-10-23 — Issue #15 PRD revision v1.0.2 (review round 2 addressed)
+
+- Staff round 2: APPROVE (4 non-blocking one-liners). QA round 2:
+  REQUEST_CHANGES on exactly one new blocking defect + 6 non-blocking.
+- v1.0.2 fixes (all findings from both reviewers):
+  - [QA N-1 blocking] Tasks row ADDED to §6 matrix (AA RCU(W), PM RCU(P),
+    CT/CN RU(A)); Documents/media row added; CORRECTION to the v1.0.1 log
+    entry below: that entry falsely claimed a tasks row existed in v1.0.1 —
+    it did not; appended here per append-only policy.
+  - Allocatable invoice states pinned to {ISSUED, PARTIALLY_PAID} (FR-PAY-02,
+    §7.4); allocation to DRAFT/VOID/PAID rejected 409.
+  - Reconciliation view now includes PENDING payments flagged
+    awaiting-evidence/disputed (FR-PAY-05, harmonized with E-07).
+  - Receipt content when zero allocations: auto-issued at confirmation, zero
+    invoice lines, references lease/tenant (FR-PAY-04).
+  - E-11 restated fail-closed (mixed-currency fixture not constructible).
+  - Determinism nits: aging bucket boundary note (day 31 -> 31-60, day 61 ->
+    61+); billing.late_fee_enabled marked reserved post-MVP (fails closed);
+    access.revocation_notify default on; payments.second_person_verification
+    defaults (cash on, electronic off); FR-LSE-02 normalization defined
+    (E.164 phone, casefolded name).
+  - Matrix editorial: footnote 3 reworded (reverse is AA-only, dual control);
+    CT identity-doc cell cites ct.identity_doc_access; R-contact added to
+    legend; AA granted activate/terminate/renew (W) on leases; PM Expenses
+    cell gains RCU+submit.
