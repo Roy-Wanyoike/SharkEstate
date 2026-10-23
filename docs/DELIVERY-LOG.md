@@ -122,3 +122,15 @@ corrections are new entries that reference the old ones.
 - Final editorial commit per reviewer instruction: domain verbs added to
   capability legend (submit/activate/terminate/renew); sign-off table updated
   with round verdicts. PO sign-off remains the open gate.
+
+## 2026-10-23 — Issue #3 opened: architecture blueprint + ADRs on feat/3-architecture
+
+- docs/architecture/ARCHITECTURE.md v0.9.0: system shape (Go modular monolith
+  + Next.js 16 frontend + PostgreSQL), domain module map with boundary rules,
+  entity relationships, workspace isolation + authz implementation contract,
+  financial integrity implementation contract (BIGINT minor units, append-only
+  via DB privileges, balance invariants, no-money-movement architecture test),
+  regional/provider port boundaries, environments + SLOs + failure modes,
+  STRIDE threat-model summary, deferred-infrastructure triggers.
+- ADR-0001..0009 recorded (Nygard format). README links updated.
+- Status: 0.9.0 draft — final approval gated on PO sign-off (PRD + D-1/D-2).
