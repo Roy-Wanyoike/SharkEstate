@@ -3,9 +3,10 @@
 > ⚠️ **Status: superseded.** These documents were an early single-agent
 > proposal written before the backlog in issues #1–#31 existed. They assume a
 > **Next.js fullstack** architecture (NextAuth, Prisma, SQLite-to-Postgres),
-> which conflicts with the approved baseline recorded in the master execution
-> prompt and issue #3: **Go backend + Next.js/TypeScript/shadcn frontend +
-> PostgreSQL + OIDC identity + modular monolith**.
+> which conflicts with the approved baseline (Go backend + Next.js frontend +
+> PostgreSQL + OIDC identity + modular monolith). The approved baseline is
+> recorded in issue #3 and its ADRs, which are the sole in-repo architecture
+> authority once approved.
 >
 > They are retained here for historical context only. **Do not implement from
 > these documents.** The authoritative architecture is the blueprint and ADRs

@@ -4,9 +4,9 @@
 
 # Linked issue
 
-<!-- Exactly one issue per PR. Use "Refs #N" — issue closes manually after
-     Principal QA verification (auto-close keywords only fire on default-branch
-     merges; our PRs target dev). -->
+<!-- Exactly one issue per PR. Use "Refs #N" — issues close manually after
+     Principal QA verification; auto-close keywords are not used in this repo
+     (closing is a deliberate QA act, not a merge side effect). -->
 
 Refs #
 

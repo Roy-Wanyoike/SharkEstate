@@ -17,6 +17,7 @@
 ├── README.md
 ├── CONTRIBUTING.md
 ├── .env.example              # placeholders only — copy to .env, never commit
+├── .gitignore                # ignores .env*, builds, logs, local db files
 ├── .github/
 │   └── PULL_REQUEST_TEMPLATE.md
 └── docs/
@@ -32,7 +33,7 @@ the architecture issue #3 — do not pre-create alternative structures.
 ## Setup
 
 ```bash
-git clone git@github.com:Roy-Wanyoike/SharkEstate.git
+git clone https://github.com/Roy-Wanyoike/SharkEstate.git
 cd SharkEstate
 cp .env.example .env   # fill placeholders locally; never commit .env
 ```

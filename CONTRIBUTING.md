@@ -22,8 +22,8 @@ Existing issue → verified scope & dependencies
 
 1. **One issue, one PR.** Do not bundle unrelated issues. Reference the issue
    in the PR body (`Refs #N`); issues are closed manually after Principal QA
-   confirms the acceptance criteria, because GitHub auto-close keywords only
-   fire on merges to the default branch.
+   confirms the acceptance criteria — closing is a deliberate QA act, never a
+   merge side effect, so auto-close keywords (`Closes #N`) are not used.
 2. **Branch naming:** `feat/<issue>-<short-slug>`, `fix/<issue>-<short-slug>`,
    `docs/<issue>-<short-slug>`. Branches are created from `origin/dev` and
    deleted after merge.

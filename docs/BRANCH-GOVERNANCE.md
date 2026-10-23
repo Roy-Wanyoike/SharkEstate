@@ -5,16 +5,23 @@
 | Branch | Role | Protection |
 |---|---|---|
 | `main` | Production. Contains only verified, released states. | PRs required · no force-push · no deletion · linear history · admin enforced |
-| `dev` | Development integration branch. Default working target for all PRs. | Same rules as `main` |
+| `dev` | Development integration branch. **Repository default branch** (flipped from `main` via API on 2026-10-23, issue #2). Default working target for all PRs. | Same rules as `main` |
 
 Both branches are persistent and non-deletable. No other persistent branches
 are permitted; feature branches (`feat/*`, `fix/*`, `docs/*`) are created from
 `origin/dev` and deleted after their PR merges.
 
-Verified configuration (set via the GitHub API at bootstrap, issue #2):
-`allow_force_pushes: false`, `allow_deletions: false`,
+Verified configuration (set via the GitHub API at bootstrap, issue #2, and
+confirmed by live denial test — a force-push against `dev` was rejected by the
+protected-branch hook): `allow_force_pushes: false`, `allow_deletions: false`,
 `required_linear_history: true`, `enforce_admins: true`,
-`required_pull_request_reviews` with `dismiss_stale_reviews: true`.
+`required_pull_request_reviews` with `dismiss_stale_reviews: true` and
+`required_approving_review_count: 0`.
+
+> Bootstrap note: the first protection call used a misspelled request key and
+> GitHub silently coerced the approval count to 1. Detected during Principal
+> verification, re-set with the correct field name, and re-verified — recorded
+> here as a reminder that protection claims must be **verified, not assumed**.
 
 **Approval policy decision:** required approving reviews is currently `0` on
 GitHub because the team has a single GitHub account today; review evidence is
@@ -30,9 +37,11 @@ recorded, time-boxed exception — not a license to self-merge silently.
   branch protection.
 - PRs target `dev`. Promotion from `dev` to `main` is a separate, controlled
   release PR (`release/<date>` or `release/<version>`), never a direct push.
-- `Closes #N` auto-close only fires on default-branch (`main`) merges. Our PRs
-  target `dev`, so issues are **closed manually** by Principal QA after
-  verifying acceptance criteria post-merge. Reference issues with `Refs #N`.
+- Issues are closed **only after Principal QA verifies acceptance criteria
+  against the merged code**. Do not use auto-close keywords (`Closes #N`,
+  `Fixes #N`) in PRs — closing is a deliberate QA act, not a merge side effect.
+  Reference issues with `Refs #N` and close them manually with an evidence
+  comment.
 
 ## Local release gate (no GitHub Actions)
 
@@ -43,12 +52,15 @@ This repository intentionally contains **no GitHub Actions workflow files**
 2. `gofmt -l .` / project linters — clean (commands expand as workstreams land;
    keep this file updated with each new tool).
 3. `go test ./...` — all packages pass (backend workstream).
-4. `pnpm lint && pnpm build && pnpm test` — frontend workstream equivalent
+4. `bun lint && bun run build && bun test` — frontend workstream equivalent
    (to be recorded precisely when the Next.js app scaffolds in #3).
 5. Migration review — any schema change ships with an up **and** documented
    rollback posture.
-6. Secret scan — `git diff origin/dev..HEAD | grep -iE '(token|secret|password|api[_-]?key)'`
-   or equivalent tooling; no matches outside test fixtures.
+6. Secret scan — value-based pattern over the full diff (matches assigned
+   credential-like values, ignores prose and `CHANGE_ME` placeholders):
+   `git diff origin/dev..HEAD | grep -inE "(password|secret|token|api[_-]?key)[\"' ]*[:=][\"' ]*[A-Za-z0-9+/_-]{12,}"`
+   — must return no matches (a deliberate exception, e.g. a redacted fixture,
+   must be explained in the PR body).
 7. Evidence recorded in the PR body. A PR without pasted gate output is not
    reviewable.
 
