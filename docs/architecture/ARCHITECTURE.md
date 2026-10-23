@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Version | 0.9.1 (review round 1 fixes — final approval gated on PO sign-off of PRD + D-1/D-2) |
+| Version | 0.9.2 (round-1 fixes + round-2 minor patches — final approval gated on PO sign-off of PRD + D-1/D-2) |
 | Status | In review (issue #3) |
 | Depends on | [PRD](../PRD.md) v1.0.2 (merged; PO sign-off pending), issue #1 confirmed decisions |
-| Decision records | [adr/](./adr/) — ADR-0001 … ADR-0009 |
+| Decision records | [adr/](./adr/) — ADR-0001 … ADR-0009 (+ ADR-0010 planned for D-1) |
 
 ## 1. System shape
 
@@ -43,7 +43,7 @@ it remains possible without rewrites.
 | Module | Owns | Key entities | Notes |
 |---|---|---|---|
 | **identity** | workspaces, users, memberships, roles, delegation, audit events, tenant portal activation | Workspace, User, Membership, Delegation, AuditEvent | deny-by-default authz policy engine; every module calls it |
-| **regional** | country profiles, currency config, provider adapter registry, policy switches | CountryProfile, ProviderConfig, PolicySet | data-driven; no country logic in code (PRD FR-REG) |
+| **regional** | country profiles, currency config, provider adapter registry, policy switches, FX conversion records | CountryProfile, ProviderConfig, PolicySet, ConversionRecord | data-driven; no country logic in code (PRD FR-REG) |
 | **portfolio** | properties, buildings, units, occupancy derivation, media links | Property, Building, Unit | occupancy derived from parties/leases state |
 | **parties** | tenant/landlord/contractor profiles, duplicate detection | Party (Tenant, Owner, Contractor), DuplicateCandidate | profiles persistent & portable across tenancies |
 | **leases** | tenancies, leases, amendments, renewals, activation guards | Tenancy, Lease, LeaseAmendment | state machine PRD §7.1; concurrency-safe activation |
@@ -109,7 +109,10 @@ implementation PR — issue #4/#5; this diagram is the boundary contract.)
   Enforced by DB privileges: the application role has **no DELETE anywhere**
   and **no UPDATE on business-field columns** of payments, allocations,
   receipts, expenses, audit_events; status/correction columns are writable
-  only via the domain layer's transactions. Audit edits/deletes are rejected
+  only via the domain layer's transactions. **Invoices:** business fields are
+  immutable once ISSUED (FR-RNT-03); while DRAFT, line-item edits are allowed
+  — the #4/#5 schema PR implements this with a DRAFT-window carve-out
+  (trigger-gated column privileges) rather than blanket grants. Audit edits/deletes are rejected
   at the API layer with `409` before reaching the DB (FR-IDW-07), so a
   privilege denial never surfaces as a 5xx to clients.
 - **Concurrency control is explicit per invariant:** allocation commands
@@ -118,8 +121,11 @@ implementation PR — issue #4/#5; this diagram is the boundary contract.)
   (PRD §7.4) cannot be raced by two concurrent allocations; lease activation
   is guarded by a **partial unique index** on `(unit_id) WHERE status IN
   ('ACTIVE','EXPIRING')`, so exactly one activation wins and losers receive
-  `409 UNIT_OCCUPIED` (E-05). Both races are cases in the FIN-INVARIANTS
-  suite.
+  `409 UNIT_OCCUPIED` (E-05). The index is the race backstop for the
+  ACTIVE/EXPIRING window; the **primary unit-occupancy gate is the derived
+  occupancy state (§7.0), whose occupied set includes EXPIRED holdover** —
+  activation on an EXPIRED-holdover unit is rejected by the state guard before
+  the index is consulted. Both races are cases in the FIN-INVARIANTS suite.
 - **Fail-closed currency guard:** any financial sum whose rows do not share
   one currency is rejected (`CURRENCY_MISMATCH`); FX conversions are explicit
   **ConversionRecord** events (rate, source, timestamp) owned by the regional

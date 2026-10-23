@@ -155,3 +155,11 @@ corrections are new entries that reference the old ones.
 - Non-blocking: queue failure-mode design (transactional enqueue, visibility
   lease, dead-letter), TSP server-side owner mapping, D-1 → planned ADR-0010,
   callback signature/replay protection requirement, invoice-gen SLO added.
+
+## 2026-10-23 — Issue #3 architecture v0.9.2 (round-2 minor patches; staff APPROVE)
+
+- Staff round 2: APPROVE. Minor patches folded per reviewer instruction:
+  invoice DRAFT-window carve-out note in privilege model; EXPIRED-holdover
+  primary-gate clarification for the activation index; regional module
+  key-entities gains ConversionRecord; read-models-are-views note; ADR index
+  header notes planned ADR-0010; probe-test status-code precision.
