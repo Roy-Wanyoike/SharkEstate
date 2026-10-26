@@ -77,6 +77,7 @@ pending="$(git diff --unified=0 HEAD -- 2>/dev/null | grep -inE "$SECRET_PATTERN
 untracked_files="$(git ls-files --others --exclude-standard)"
 if [ -n "$untracked_files" ]; then
   scanned_list="$scanned_list untracked-files"
+  # GNU xargs assumed (-r); documented dev environment is Linux (docs/local-development.md)
   untracked="$(printf '%s\n' "$untracked_files" | tr '\n' '\0' | xargs -0 -r grep -HnE "$SECRET_PATTERN" 2>/dev/null || true)"
   [ -n "$untracked" ] && secret_hits="$secret_hits$untracked"
 fi
@@ -98,6 +99,7 @@ while IFS= read -r f; do
       \#*|http://*|https://*|mailto:*) continue ;;
       *"://"*) continue ;;
     esac
+    t="${t%%\"*}"                 # strip markdown link title if present
     path="${t%%#*}"
     [ -z "$path" ] && continue
     path="${path//%20/ }"
