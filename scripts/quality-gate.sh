@@ -100,6 +100,7 @@ while IFS= read -r f; do
       *"://"*) continue ;;
     esac
     t="${t%%\"*}"                 # strip markdown link title if present
+    t="${t%"${t##*[! ]}"}"        # trim trailing spaces left by the title strip
     path="${t%%#*}"
     [ -z "$path" ] && continue
     path="${path//%20/ }"
