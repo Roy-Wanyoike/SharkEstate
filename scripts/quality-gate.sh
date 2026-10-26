@@ -40,10 +40,13 @@ echo "SharkEstate quality gate — branch=$BRANCH head=$HEAD_SHA base=${BASE:-<n
 echo
 
 # --- G1: no GitHub Actions workflow files (repository constraint) -----------
-if git ls-files -- '.github/workflows/*' | grep -q .; then
-  report G1 FAIL "GitHub Actions workflow files present: $(git ls-files -- '.github/workflows/*' | tr '\n' ' ')"
+# Checks tracked AND on-disk so untracked workflow files cannot slip through
+# a pre-commit gate run.
+wf_hits="$(git ls-files -- '.github/workflows/*'; ls -A .github/workflows 2>/dev/null | sed 's|^|.github/workflows/|')"
+if [ -n "$wf_hits" ]; then
+  report G1 FAIL "GitHub Actions workflow files present: $(printf '%s\n' "$wf_hits" | sort -u | tr '\n' ' ')"
 else
-  report G1 PASS "no GitHub Actions workflow files"
+  report G1 PASS "no GitHub Actions workflow files (tracked or on disk)"
 fi
 
 # --- G2: no committed env files + value-based secret scan -------------------
@@ -57,18 +60,28 @@ else
 fi
 
 SECRET_PATTERN='(password|secret|token|api[_-]?key)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9+/_-]{12,}'
+secret_hits=""
+scan_modes=""
 if [ -n "$BASE" ] && [ "$HEAD_SHA" != "unknown" ]; then
-  secret_hits="$(git diff --unified=0 "$BASE" HEAD -- 2>/dev/null | grep -inE "$SECRET_PATTERN" | grep -vE '^(\+\+\+|---)' || true)"
-  scan_mode="value-based scan of diff ${BASE}..HEAD"
-else
+  committed="$(git diff --unified=0 "${BASE}..HEAD" -- 2>/dev/null | grep -inE "$SECRET_PATTERN" | grep -vE '^(\+\+\+|---)' || true)"
+  if [ -n "$committed" ]; then secret_hits="$secret_hits$committed"; scan_modes="$scan_modes committed-diff(${BASE}..HEAD)"; fi
+fi
+pending="$(git diff --unified=0 HEAD -- 2>/dev/null | grep -inE "$SECRET_PATTERN" | grep -vE '^(\+\+\+|---)' || true)"
+if [ -n "$pending" ]; then secret_hits="$secret_hits$pending"; scan_modes="$scan_modes pending-changes(staged+unstaged)"; fi
+untracked_files="$(git ls-files --others --exclude-standard)"
+if [ -n "$untracked_files" ]; then
+  untracked="$(printf '%s\n' "$untracked_files" | tr '\n' '\0' | xargs -0 -r grep -HnE "$SECRET_PATTERN" 2>/dev/null || true)"
+  if [ -n "$untracked" ]; then secret_hits="$secret_hits$untracked"; scan_modes="$scan_modes untracked-files"; fi
+fi
+if [ -z "$scan_modes" ]; then
+  scan_modes="full tracked tree"
   secret_hits="$(git grep -inE "$SECRET_PATTERN" -- . 2>/dev/null || true)"
-  scan_mode="value-based scan of full tracked tree"
 fi
 if [ -n "$secret_hits" ]; then
-  report G2b FAIL "credential-like assignments in $scan_mode:"
+  report G2b FAIL "credential-like assignments in:$scan_modes"
   printf '%s\n' "$secret_hits" | sed 's/^/       /'
 else
-  report G2b PASS "secret scan clean ($scan_mode)"
+  report G2b PASS "secret scan clean (scanned:$scan_modes)"
 fi
 
 # --- G3: relative markdown links resolve ------------------------------------
