@@ -20,10 +20,13 @@
 ├── .gitignore                # ignores .env*, builds, logs, local db files
 ├── .github/
 │   └── PULL_REQUEST_TEMPLATE.md
+├── scripts/
+│   └── quality-gate.sh       # normative local quality gate (issue #14)
 └── docs/
     ├── BRANCH-GOVERNANCE.md  # branches, merges, local release gate
     ├── local-development.md  # this file
     ├── DELIVERY-LOG.md       # append-only delivery record
+    ├── quality/              # test strategy, threat register, release checklist (#14)
     └── proposals/phase0/     # superseded early proposals (pending #3)
 ```
 
@@ -46,11 +49,18 @@ workstream and is verified at every PR.
 
 | Command | Purpose | Status |
 |---|---|---|
-| `go test ./...` | Backend unit + integration tests | pending #4 |
-| `go vet ./...` | Static analysis | pending #4 |
-| `gofmt -l .` | Formatting check | pending #4 |
-| `bun install && bun lint` | Frontend lint | pending #3 scaffold |
-| `bun build` | Frontend production build | pending #3 scaffold |
+| `scripts/quality-gate.sh` | Runs every applicable quality gate (G1–G7) and prints a PASS/FAIL/SKIP summary | **active** (issue #14) |
+| `go test ./...` | Backend unit + integration tests | pending #4 (auto-run by gate) |
+| `go vet ./...` | Static analysis | pending #4 (auto-run by gate) |
+| `gofmt -l .` | Formatting check | pending #4 (auto-run by gate) |
+| `govulncheck ./...` | Go dependency vulnerability scan | pending #4 (auto-run by gate when installed) |
+| `bun install && bun lint` | Frontend lint | pending web scaffold (auto-run by gate) |
+| `bun build` | Frontend production build | pending web scaffold (auto-run by gate) |
+| `bun audit` | Frontend dependency audit | pending web scaffold (auto-run by gate) |
+
+The gate script auto-detects which workstreams exist (go.mod, web/package.json,
+migrations) and reports everything else as SKIP with a reason — a gate run is
+valid evidence even while the repository is docs-only.
 
 ## Environment variables
 
