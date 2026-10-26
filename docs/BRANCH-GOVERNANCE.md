@@ -64,6 +64,15 @@ This repository intentionally contains **no GitHub Actions workflow files**
 7. Evidence recorded in the PR body. A PR without pasted gate output is not
    reviewable.
 
+**Gate executor (issue #14):** `scripts/quality-gate.sh` runs every
+applicable gate above in one reproducible command and is the normative
+pre-PR check — run it from the repository root and paste its summary into the
+PR body. Individual commands remain documented here for transparency and
+onboarding. Gates auto-activate as workstreams land (a `SKIP` is an explicit,
+loud deferral — never a silent pass); a new gate is added to the script and to
+[TEST-STRATEGY.md](./quality/TEST-STRATEGY.md) in the same PR that introduces
+the code it checks.
+
 The release PR `dev → main` additionally requires: all merged issue acceptance
 criteria re-verified, backup/restore posture confirmed (issue #14/#31 when
 active), rollback plan stated, and Principal QA verdict recorded in

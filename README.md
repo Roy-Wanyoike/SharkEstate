@@ -22,6 +22,8 @@ only through the documented release gate.
 | [docs/local-development.md](./docs/local-development.md) | Environment setup and the command map |
 | [docs/DELIVERY-LOG.md](./docs/DELIVERY-LOG.md) | Append-only engineering delivery record |
 | [docs/architecture/](./docs/architecture/ARCHITECTURE.md) | Architecture blueprint + ADRs (issue #3) |
+| [docs/quality/](./docs/quality/TEST-STRATEGY.md) | Test strategy, threat register, release checklist (issue #14) |
+| [scripts/quality-gate.sh](./scripts/quality-gate.sh) | Normative local quality gate — run before every PR |
 | [docs/proposals/phase0/](./docs/proposals/phase0/README.md) | Early design proposals — **superseded, pending #3** |
 
 ## Approved technology baseline (pending formal ADR sign-off in #3)

@@ -163,3 +163,31 @@ corrections are new entries that reference the old ones.
   primary-gate clarification for the activation index; regional module
   key-entities gains ConversionRecord; read-models-are-views note; ADR index
   header notes planned ADR-0010; probe-test status-code precision.
+
+## 2026-10-26 — Issue #14 opened: quality gates foundation on docs/14-quality-gates
+
+- Baseline state consumed: PRs #35/#36/#37/#38 merged (bootstrap, PRD v1.0.2,
+  blueprint v0.9.2 + ADR-0001..0009, release to main). #3 engineering-approved;
+  PO decisions pending: PRD sign-off, D-1 pilot country, D-2 identity provider.
+  #14 is the first ungated deliverable (explicitly "starts with #2 and #3").
+- `scripts/quality-gate.sh`: normative gate executor (G1 no-Actions, G2a no-.env,
+  G2b value-based secret scan diff/full-tree, G3 markdown link check, G4 Go
+  fmt/vet/test, G5 frontend install/lint/build/test, G6 govulncheck/bun audit,
+  G7 migration rollback posture). Auto-activates per workstream; SKIP is loud.
+- `docs/quality/TEST-STRATEGY.md` v0.1.0: test levels; named-suite registry
+  (FIN-INVARIANTS, AUTHZ-MATRIX, WS-ISOLATION-IDOR, REPRODUCIBILITY, REDACTION,
+  IDEMPOTENCY, A11Y-PERF, MIGRATION, NO-MONEY-MOVEMENT) with land-with issues;
+  E-01..E-14 traceability; FR coverage rule + matrix template; budgets from
+  PRD §10; test-data/privacy policy; gate-green criteria per PR type.
+- `docs/quality/THREAT-REGISTER.md` v0.1.0: the "full register" ARCHITECTURE §8
+  defers to — T-01..T-14 with mitigation/suite/owner/status; T-13 encodes the
+  standing release blocker (no persistent customer data before #31 drill).
+- `docs/quality/RELEASE-CHECKLIST.md` v0.1.0: dev→main promotion checklist,
+  APPROVE/BLOCK verdict format, revert-default rollback policy.
+- BRANCH-GOVERNANCE.md, local-development.md, README.md updated to reference
+  the gate executor; command map expanded.
+- Doc-drift finding: ARCHITECTURE §5 cites "PRD §14 suite FIN-INVARIANTS" but
+  PRD v1.0.2 ends at §12; canonical suite definitions now live in
+  docs/quality/TEST-STRATEGY.md (blueprint editorial fix → #3 follow-up).
+- Status: issue #14 stays OPEN — gates + registry delivered; suites themselves
+  are obligations attached to their owning issues (#4/#7/#8/#9/#10/#11/#12/#28/#31).
