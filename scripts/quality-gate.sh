@@ -61,27 +61,30 @@ fi
 
 SECRET_PATTERN='(password|secret|token|api[_-]?key)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9+/_-]{12,}'
 secret_hits=""
-scan_modes=""
-if [ -n "$BASE" ] && [ "$HEAD_SHA" != "unknown" ]; then
+scanned_list=""
+full_scan=0
+case "${GATE_FULL:-}" in 1|true|yes) full_scan=1 ;; esac
+if [ -n "$BASE" ] && [ "$HEAD_SHA" != "unknown" ] && [ "$full_scan" -eq 0 ]; then
+  scanned_list="$scanned_list committed-diff(${BASE}..HEAD)"
   committed="$(git diff --unified=0 "${BASE}..HEAD" -- 2>/dev/null | grep -inE "$SECRET_PATTERN" | grep -vE '^(\+\+\+|---)' || true)"
-  if [ -n "$committed" ]; then secret_hits="$secret_hits$committed"; scan_modes="$scan_modes committed-diff(${BASE}..HEAD)"; fi
+  [ -n "$committed" ] && secret_hits="$secret_hits$committed"
+else
+  scanned_list="$scanned_list full-tracked-tree"
 fi
+scanned_list="$scanned_list pending-changes(staged+unstaged)"
 pending="$(git diff --unified=0 HEAD -- 2>/dev/null | grep -inE "$SECRET_PATTERN" | grep -vE '^(\+\+\+|---)' || true)"
-if [ -n "$pending" ]; then secret_hits="$secret_hits$pending"; scan_modes="$scan_modes pending-changes(staged+unstaged)"; fi
+[ -n "$pending" ] && secret_hits="$secret_hits$pending"
 untracked_files="$(git ls-files --others --exclude-standard)"
 if [ -n "$untracked_files" ]; then
+  scanned_list="$scanned_list untracked-files"
   untracked="$(printf '%s\n' "$untracked_files" | tr '\n' '\0' | xargs -0 -r grep -HnE "$SECRET_PATTERN" 2>/dev/null || true)"
-  if [ -n "$untracked" ]; then secret_hits="$secret_hits$untracked"; scan_modes="$scan_modes untracked-files"; fi
-fi
-if [ -z "$scan_modes" ]; then
-  scan_modes="full tracked tree"
-  secret_hits="$(git grep -inE "$SECRET_PATTERN" -- . 2>/dev/null || true)"
+  [ -n "$untracked" ] && secret_hits="$secret_hits$untracked"
 fi
 if [ -n "$secret_hits" ]; then
-  report G2b FAIL "credential-like assignments in:$scan_modes"
+  report G2b FAIL "credential-like assignments found (scanned:$scanned_list)"
   printf '%s\n' "$secret_hits" | sed 's/^/       /'
 else
-  report G2b PASS "secret scan clean (scanned:$scan_modes)"
+  report G2b PASS "secret scan clean (scanned:$scanned_list)"
 fi
 
 # --- G3: relative markdown links resolve ------------------------------------

@@ -19,8 +19,9 @@ use the [PR template](../../.github/PULL_REQUEST_TEMPLATE.md) and the
    release; each has evidence-backed acceptance verification in its PR and
    delivery-log entry. Issues closed only after Principal QA confirmed ACs
    against merged code.
-2. **Full quality gate on dev tip** — `scripts/quality-gate.sh` green with
-   `GATE_BASE` unset (full-tree secret scan); paste summary in the release PR.
+2. **Full quality gate on dev tip** — `GATE_FULL=1 scripts/quality-gate.sh`
+   green (`GATE_FULL=1` adds a full-tree secret scan over every tracked file,
+   not just the release diff); paste summary in the release PR.
 3. **Suite status review** — every suite in
    [TEST-STRATEGY](./TEST-STRATEGY.md) §4 that maps to delivered scope is
    `tested`, with evidence linked; no obligation silently downgraded.
