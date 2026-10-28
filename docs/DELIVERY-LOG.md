@@ -191,3 +191,21 @@ corrections are new entries that reference the old ones.
   docs/quality/TEST-STRATEGY.md (blueprint editorial fix → #3 follow-up).
 - Status: issue #14 stays OPEN — gates + registry delivered; suites themselves
   are obligations attached to their owning issues (#4/#7/#8/#9/#10/#11/#12/#28/#31).
+
+## 2026-10-28 — Phase-1 audit + product-owner decisions recorded (docs/3-15-po-decisions)
+
+- Baseline audited per Engineering Execution Mandate: 33 open issues, no
+  product code, no broken workflows; untracked defects U-1..U-3 identified
+  (docs/DELIVERY-PLAN.md); no duplicates; dependency spine #4→#5→#6→#7→#8→#9.
+- PO decisions recorded (source of authority: the product owner's Engineering
+  Execution Mandate, 2026-10-28): PRD v1.0.2 signed off; D-1 Kenya → ADR-0010;
+  D-2 Keycloak self-hosted → ADR-0011. ARCHITECTURE → v1.0.0 Approved.
+  Editorial fix U-1 folded (ARCHITECTURE §5 "PRD §14" citation now points to
+  docs/quality/TEST-STRATEGY.md, the canonical suite registry).
+- Feature issues #4/#5 unlocked per #3 acceptance criteria.
+- Delivery plan published: docs/DELIVERY-PLAN.md (priorities, owners,
+  dependencies, parallelism rules, standing deviations).
+- Toolchain verified this session: Go 1.23.4 installed; PostgreSQL 16.4
+  running rootless (embedded server binaries, port 5433); go.mod pins
+  pgx v5.7.6 / golang-migrate v4.18.3 / go-oidc v3.14.1 / golang-jwt v5.2.2
+  (all Go-1.23-compatible; GOTOOLCHAIN=local enforced to honor ADR-0002).

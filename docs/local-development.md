@@ -7,7 +7,7 @@
 | Go | 1.23.x | Backend (modular monolith). Modules land with issue #4+ |
 | Node.js | ≥ 20 (24 tested) | Frontend build tooling |
 | bun | 1.3.x | Frontend package manager + scripts |
-| PostgreSQL | 16+ | Authoritative datastore. Local server required from #4 onward |
+| PostgreSQL | 16+ | Authoritative datastore. Local server required from #4 onward (docker compose ships with #4; rootless environments may use embedded server binaries — any vanilla PostgreSQL 16 works) |
 | Keycloak | candidate | OIDC identity provider; ADR pending in #3. Local compose file to be provided with the identity workstream |
 
 ## Repository layout (current)

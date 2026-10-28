@@ -1,6 +1,6 @@
 # ADR-0004: OIDC identity; Keycloak candidate (D-2 pending)
 
-- Status: Proposed (final choice gated on product-owner decision D-2)
+- Status: Accepted via [ADR-0011](./0011-oidc-keycloak-self-hosted.md) (product-owner decision D-2, 2026-10-28)
 - Date: 2026-10-23
 
 ## Context

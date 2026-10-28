@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Version | 0.9.2 (round-1 fixes + round-2 minor patches — final approval gated on PO sign-off of PRD + D-1/D-2) |
-| Status | In review (issue #3) |
-| Depends on | [PRD](../PRD.md) v1.0.2 (merged; PO sign-off pending), issue #1 confirmed decisions |
-| Decision records | [adr/](./adr/) — ADR-0001 … ADR-0009 (+ ADR-0010 planned for D-1) |
+| Version | 1.0.0 (approved: staff review APPROVE + product-owner sign-off 2026-10-28; D-1 → ADR-0010, D-2 → ADR-0011) |
+| Status | **Approved** (issue #3) |
+| Depends on | [PRD](../PRD.md) v1.0.2 (signed off 2026-10-28), issue #1 confirmed decisions |
+| Decision records | [adr/](./adr/) — ADR-0001 … ADR-0011 |
 
 ## 1. System shape
 
@@ -130,7 +130,7 @@ implementation PR — issue #4/#5; this diagram is the boundary contract.)
   one currency is rejected (`CURRENCY_MISMATCH`); FX conversions are explicit
   **ConversionRecord** events (rate, source, timestamp) owned by the regional
   module and linked to any converted display (FR-REG-02, E-11).
-- **Balance invariants** (property-based tests, PRD §14 suite FIN-INVARIANTS):
+- **Balance invariants** (property-based tests, [TEST-STRATEGY](../quality/TEST-STRATEGY.md) suite FIN-INVARIANTS):
   invoice state ⇔ Σ surviving allocations; Σ allocations ≤ payment; credit =
   Σ confirmed non-reversed − Σ surviving allocations (per lease).
 - **Transactions & idempotency:** every multi-record state change runs in one
@@ -236,4 +236,5 @@ when #23 lands.
 | [ADR-0007](./adr/0007-notifications-provider-ports.md) | Notification intents with consent-aware provider ports |
 | [ADR-0008](./adr/0008-private-object-storage.md) | Private S3-compatible object storage with scoped presigned access |
 | [ADR-0009](./adr/0009-deferred-infrastructure.md) | Deferred/rejected infrastructure (Redis, Temporal, NATS, microservices) with trigger conditions |
-| ADR-0010 *(planned)* | Pilot country selection — created on D-1 product-owner sign-off |
+| [ADR-0010](./adr/0010-pilot-country-kenya.md) | Pilot country is Kenya (D-1) |
+| [ADR-0011](./adr/0011-oidc-keycloak-self-hosted.md) | OIDC identity provider: Keycloak self-hosted (D-2) |

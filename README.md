@@ -26,7 +26,7 @@ only through the documented release gate.
 | [scripts/quality-gate.sh](./scripts/quality-gate.sh) | Normative local quality gate — run before every PR |
 | [docs/proposals/phase0/](./docs/proposals/phase0/README.md) | Early design proposals — **superseded, pending #3** |
 
-## Approved technology baseline (pending formal ADR sign-off in #3)
+## Approved technology baseline (ADR-0001..0011, signed off 2026-10-28)
 
 - **Backend:** Go (modular monolith with explicit domain boundaries)
 - **Frontend:** Next.js + TypeScript + shadcn/ui
