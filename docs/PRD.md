@@ -482,10 +482,12 @@ payments (mitigate: §3.3 hard boundary + FR-PAY-07 architecture test).
 
 | Role | Name/Handle | Verdict | Date |
 |---|---|---|---|
-| Product owner | @Roy-Wanyoike | ⏳ pending (required before issue #15 closes) | — |
+| Product owner | @Roy-Wanyoike | **APPROVED v1.0.2** — Engineering Execution Mandate (2026-10-28) adopting staff+QA-approved draft; D-1 Kenya via ADR-0010; D-2 Keycloak via ADR-0011 | 2026-10-28 |
 | Staff engineer (independent) | PR #36 review thread | round 1: REQUEST_CHANGES → v1.0.1; round 2: **APPROVE** (non-blocking one-liners landed in v1.0.2) | 2026-10-23 |
 | QA representative | PR #36 review thread | round 1: REQUEST_CHANGES → v1.0.1; round 2: REQUEST_CHANGES (1 blocking) → v1.0.2; round 3: **APPROVE** | 2026-10-23 |
 
-v1.0.2 approved by independent staff-engineer and QA reviews. Product-owner
-sign-off (incl. D-1 pilot country) remains the open gate for closing #15 and
-final #3 approval. Sign-off issue comments supersede this table once recorded.
+v1.0.2 approved by independent staff-engineer and QA reviews; product-owner
+sign-off recorded 2026-10-28 (source of authority: the product owner's
+Engineering Execution Mandate directing implementation of the approved
+architecture). D-1/D-2 are recorded as ADR-0010/ADR-0011. Status: **signed
+off**; requirements herein are binding for MVP delivery.
